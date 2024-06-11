@@ -1,5 +1,3 @@
-// package main.java.com.chat.server;
-
 package com.chat.server;
 
 import java.io.*;
@@ -7,7 +5,7 @@ import java.net.*;
 import java.util.*;
 
 public class ChatServer {
-    private static final int PORT = 12345;
+    private static final int PORT = 1234;
     private static Map<String, Set<ClientHandler>> groups = new HashMap<>();
     private static Set<ClientHandler> clientHandlers = new HashSet<>();
 
@@ -16,7 +14,6 @@ public class ChatServer {
             System.out.println("Chat server started...");
             while (true) {
                 Socket socket = serverSocket.accept();
-                System.out.println("New client connected: " + socket.getInetAddress());
                 ClientHandler clientHandler = new ClientHandler(socket, clientHandlers, groups);
                 clientHandlers.add(clientHandler);
                 new Thread(clientHandler).start();
@@ -44,7 +41,7 @@ class ClientHandler implements Runnable {
     public void run() {
         try {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"), true);
+            out = new PrintWriter(socket.getOutputStream(), true);
 
             String message;
             while ((message = in.readLine()) != null) {
@@ -52,6 +49,8 @@ class ClientHandler implements Runnable {
                     joinGroup(message.substring(6));
                 } else if (message.startsWith("/create ")) {
                     createGroup(message.substring(8));
+                } else if (message.equals("/members")) {
+                    listGroupMembers();
                 } else {
                     broadcastMessage(message);
                 }
@@ -81,6 +80,17 @@ class ClientHandler implements Runnable {
     private void createGroup(String groupName) {
         groups.putIfAbsent(groupName, new HashSet<>());
         out.println("Group " + groupName + " created");
+    }
+
+    private void listGroupMembers() {
+        if (currentGroup != null) {
+            out.println("Members of " + currentGroup + ":");
+            for (ClientHandler member : groups.get(currentGroup)) {
+                out.println(member.socket.getInetAddress());
+            }
+        } else {
+            out.println("You are not in a group");
+        }
     }
 
     private void broadcastMessage(String message) {
