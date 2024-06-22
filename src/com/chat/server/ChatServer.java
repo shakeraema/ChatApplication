@@ -3,6 +3,13 @@ package com.chat.server;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import com.chat.database.DatabaseConnection;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 
 public class ChatServer {
     private static final int PORT = 1234;
@@ -67,6 +74,39 @@ class ClientHandler implements Runnable {
             if (currentGroup != null) {
                 groups.get(currentGroup).remove(this);
             }
+        }
+    }
+
+    private void authenticate() {
+        try {
+            out.println("Enter username:");
+            String username = in.readLine();
+            out.println("Enter password:");
+            String password = in.readLine();
+
+            if (loginUser(username, password)) {
+                out.println("Login successful!");
+                // Proceed with connection
+            } else {
+                out.println("Login failed. Connection closed.");
+                socket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean loginUser(String username, String password) {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            String query = "SELECT * FROM users WHERE username = ? AND password = ?";
+            PreparedStatement stmt = conn.prepareStatement(query);
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
         }
     }
 
